@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Controle de Emissão Atmosférica</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2230;
+    --border: #2d3748;
+    --accent: #00d4aa;
+    --accent2: #0099ff;
+    --warn: #ff6b35;
+    --danger: #ff3366;
+    --text: #e2e8f0;
+    --muted: #6b7a96;
+    --success: #38c172;
+    --firebase: #FF9500;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  .header {
+    background: linear-gradient(135deg, #0d1117 0%, #1a2235 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 20px;
+    display: flex; align-items: center; gap: 14px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 4px 24px rgba(0,212,170,0.15);
+  }
+  .header-icon { width: 44px; height: 44px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .header-title { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; line-height: 1.1; }
+  .header-sub { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .header-badge { background: rgba(0,212,170,0.15); border: 1px solid var(--accent); border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 1px; }
+  .cfg-btn { background: rgba(255,149,0,0.15); border: 1px solid var(--firebase); border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--firebase); letter-spacing: 1px; cursor: pointer; }
+
+  /* TABS */
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 74px; z-index: 99; }
+  .tab { flex: 1; padding: 12px 8px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .main { padding: 20px 16px 100px; max-width: 600px; margin: 0 auto; }
+
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 16px; overflow: hidden; transition: border-color 0.2s; }
+  .section.active { border-color: var(--accent); }
+  .section-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .section-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .section-icon.green { background: rgba(0,212,170,0.15); }
+  .section-icon.blue  { background: rgba(0,153,255,0.15); }
+  .section-icon.orange{ background: rgba(255,107,53,0.15); }
+  .section-icon.purple{ background: rgba(160,110,255,0.15); }
+  .section-icon.fire  { background: rgba(255,149,0,0.15); }
+  .section-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
+  .section-body { padding: 18px; }
+
+  .auto-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 6px; }
+  .auto-field { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+  .auto-label { font-size: 10px; font-weight: 600; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .auto-value { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 600; color: var(--text); }
+  .auto-value.loading { color: var(--muted); font-size: 12px; }
+
+  .source-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .source-btn { background: var(--surface2); border: 2px solid var(--border); border-radius: 12px; padding: 14px 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 7px; transition: all 0.2s; position: relative; overflow: hidden; }
+  .source-btn:hover { border-color: var(--accent); background: rgba(0,212,170,0.05); }
+  .source-btn.selected { border-color: var(--accent); background: rgba(0,212,170,0.12); }
+  .source-btn.selected::after { content: '✓'; position: absolute; top: 6px; right: 8px; font-size: 12px; color: var(--accent); font-weight: 700; }
+  .source-emoji { font-size: 26px; }
+  .source-label { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: var(--text); text-align: center; text-transform: uppercase; }
+
+  .field-group { margin-bottom: 14px; }
+  .field-label { display: block; font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 7px; }
+  .field-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; color: var(--text); font-family: 'Barlow', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s; }
+  .field-input:focus { border-color: var(--accent); }
+  .field-input option { background: #1c2230; }
+
+  .ring-title { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; text-align: center; margin-bottom: 12px; }
+  .ring-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px; }
+  .ring-card { border-radius: 10px; cursor: pointer; border: 3px solid transparent; transition: all 0.2s; overflow: hidden; position: relative; }
+  .ring-card.selected { border-color: white; transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,255,0.3); }
+  .ring-color { height: 54px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-align: center; padding: 4px; }
+  .ring-label { padding: 5px 4px; text-align: center; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; background: var(--surface2); color: var(--text); }
+  .ring-0 { background: #f8f8f8; color: #555; }
+  .ring-1 { background: #d4d4d4; color: #333; }
+  .ring-2 { background: #9a9a9a; color: white; }
+  .ring-3 { background: #4a4a4a; color: white; }
+  .ring-4 { background: #1a1a1a; color: white; }
+  .ring-selected-info { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .ring-sel-color { width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.2); }
+  .ring-sel-label { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; }
+  .ring-sel-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .ring-status { margin-left: auto; padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .status-ok    { background: rgba(56,193,114,0.2); color: var(--success); border: 1px solid var(--success); }
+  .status-atenc { background: rgba(255,193,7,0.2);  color: #ffc107; border: 1px solid #ffc107; }
+  .status-crit  { background: rgba(255,51,102,0.2); color: var(--danger); border: 1px solid var(--danger); }
+
+  .camera-btn { width: 100%; background: rgba(0,153,255,0.1); border: 2px dashed rgba(0,153,255,0.4); border-radius: 12px; padding: 20px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.2s; color: var(--accent2); }
+  .camera-btn:hover { background: rgba(0,153,255,0.18); border-color: var(--accent2); }
+  .camera-icon { font-size: 32px; }
+  .camera-label { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .camera-sub { font-size: 11px; color: var(--muted); }
+  #camera-preview { width: 100%; border-radius: 12px; display: none; margin-top: 12px; border: 2px solid var(--accent2); max-height: 220px; object-fit: cover; background: #000; }
+  #captured-img { width: 100%; border-radius: 12px; display: none; margin-top: 12px; border: 2px solid var(--success); }
+  .camera-controls { display: none; gap: 10px; margin-top: 10px; }
+  .cam-action { flex: 1; padding: 10px; border: none; border-radius: 8px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; }
+  .cam-capture { background: var(--accent); color: black; }
+  .cam-cancel  { background: var(--border); color: var(--text); }
+
+  textarea.field-input { min-height: 90px; resize: vertical; font-size: 13px; }
+
+  .submit-btn { width: 100%; background: linear-gradient(135deg, var(--accent) 0%, #00b38a 100%); border: none; border-radius: 14px; padding: 18px; font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #000; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 24px rgba(0,212,170,0.3); margin-top: 8px; }
+  .submit-btn:hover { transform: translateY(-1px); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 14px 24px; border-radius: 40px; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 999; white-space: nowrap; box-shadow: 0 8px 32px rgba(56,193,114,0.4); }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); }
+
+  .extra-fields { display: none; }
+  .extra-fields.visible { display: block; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .live-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; display: inline-block; animation: pulse 1.4s ease infinite; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+  .info-tag { display: inline-flex; align-items: center; gap: 5px; background: rgba(0,212,170,0.08); border: 1px solid rgba(0,212,170,0.25); border-radius: 6px; padding: 3px 9px; font-size: 10px; font-weight: 600; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; }
+
+  /* FIREBASE CONFIG MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; display: none; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--firebase); border-radius: 16px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: 16px 16px 0 0; }
+  .modal-title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+  .modal-close { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+  .modal-body { padding: 20px; }
+  .firebase-status { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; margin-bottom: 18px; font-size: 13px; font-weight: 600; }
+  .firebase-status.ok   { background: rgba(56,193,114,0.12); border: 1px solid var(--success); color: var(--success); }
+  .firebase-status.warn { background: rgba(255,149,0,0.12); border: 1px solid var(--firebase); color: var(--firebase); }
+  .modal-save { width: 100%; background: var(--firebase); border: none; border-radius: 10px; padding: 14px; font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: white; cursor: pointer; margin-top: 16px; }
+  .modal-save:hover { opacity: 0.9; }
+  .hint { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .hint a { color: var(--accent2); }
+
+  /* HISTORY TAB */
+  .record-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .record-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .record-source { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; text-transform: uppercase; }
+  .record-date { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .record-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .record-badge { padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .badge-ring { background: rgba(160,110,255,0.15); color: #a06eff; border: 1px solid #a06eff; }
+  .badge-loc  { background: rgba(0,153,255,0.12); color: var(--accent2); border: 1px solid var(--accent2); }
+  .badge-op   { background: rgba(0,212,170,0.1); color: var(--accent); border: 1px solid var(--accent); }
+  .no-records { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .no-records-icon { font-size: 40px; margin-bottom: 12px; }
+  .no-records-text { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .refresh-btn { background: rgba(0,212,170,0.1); border: 1px solid var(--accent); border-radius: 8px; color: var(--accent); padding: 8px 18px; font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 14px; letter-spacing: 1px; text-transform: uppercase; }
+  .loading-records { text-align: center; padding: 30px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- FIREBASE CONFIG MODAL -->
+<div class="modal-overlay" id="cfg-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:22px">🔥</span>
+      <div class="modal-title">Configurar Firebase</div>
+      <button class="modal-close" onclick="closeCfg()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="firebase-status warn" id="fb-status">
+        ⚠️ Firebase não configurado — dados salvos apenas localmente
+      </div>
+      <div class="field-group">
+        <label class="field-label">API Key</label>
+        <input type="text" class="field-input" id="cfg-apiKey" placeholder="AIzaSy...">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Auth Domain</label>
+        <input type="text" class="field-input" id="cfg-authDomain" placeholder="meu-projeto.firebaseapp.com">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Project ID</label>
+        <input type="text" class="field-input" id="cfg-projectId" placeholder="meu-projeto">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Storage Bucket</label>
+        <input type="text" class="field-input" id="cfg-storageBucket" placeholder="meu-projeto.appspot.com">
+      </div>
+      <div class="field-group" style="margin-bottom:0">
+        <label class="field-label">Messaging Sender ID</label>
+        <input type="text" class="field-input" id="cfg-messagingSenderId" placeholder="123456789">
+      </div>
+      <div class="field-group" style="margin-top:14px;margin-bottom:0">
+        <label class="field-label">App ID</label>
+        <input type="text" class="field-input" id="cfg-appId" placeholder="1:123:web:abc...">
+      </div>
+      <p class="hint" style="margin-top:14px">
+        👆 Acesse <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> →
+        seu projeto → ⚙️ Configurações → Seus apps → SDK de configuração → Config.
+        Cole cada valor acima e salve.
+      </p>
+      <button class="modal-save" onclick="saveCfg()">🔥 Salvar e Conectar</button>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-icon">🌫️</div>
+  <div>
+    <div class="header-title">Emissão Atmosférica</div>
+    <div class="header-sub">Cartão Ringelmann Digital</div>
+  </div>
+  <div class="header-actions">
+    <div class="cfg-btn" onclick="openCfg()">🔥 Firebase</div>
+    <div class="header-badge" id="fb-badge">⚫ LOCAL</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('form')">📋 Lançamento</div>
+  <div class="tab" onclick="switchTab('history')">🗂️ Histórico</div>
+</div>
+
+<!-- FORM TAB -->
+<div class="tab-content active" id="tab-form">
+<div class="main">
+
+  <!-- AUTO DATA -->
+  <div class="section active">
+    <div class="section-header">
+      <div class="section-icon green">📡</div>
+      <div class="section-title">Dados Automáticos</div>
+      <span class="info-tag" style="margin-left:auto;margin-bottom:0"><span class="live-dot"></span> AO VIVO</span>
+    </div>
+    <div class="section-body">
+      <div class="auto-row">
+        <div class="auto-field">
+          <div class="auto-label">📅 Data</div>
+          <div class="auto-value" id="auto-date">—</div>
+        </div>
+        <div class="auto-field">
+          <div class="auto-label">🕐 Hora</div>
+          <div class="auto-value" id="auto-time">—</div>
+        </div>
+      </div>
+      <div class="auto-row">
+        <div class="auto-field">
+          <div class="auto-label">📍 Latitude</div>
+          <div class="auto-value loading" id="auto-lat">Obtendo...</div>
+        </div>
+        <div class="auto-field">
+          <div class="auto-label">📍 Longitude</div>
+          <div class="auto-value loading" id="auto-lon">Obtendo...</div>
+        </div>
+      </div>
+      <div class="auto-field" style="margin-top:12px">
+        <div class="auto-label">🗺️ Localização</div>
+        <div class="auto-value loading" id="auto-loc" style="font-size:12px">Aguardando GPS...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPERATOR -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon blue">👷</div>
+      <div class="section-title">Operador</div>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <label class="field-label">Nome do Operador</label>
+        <input type="text" class="field-input" id="op-name" placeholder="Digite seu nome completo">
+      </div>
+      <div class="field-group" style="margin-bottom:0">
+        <label class="field-label">Matrícula / ID</label>
+        <input type="text" class="field-input" id="op-id" placeholder="Ex: OP-00123">
+      </div>
+    </div>
+  </div>
+
+  <!-- SOURCE TYPE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon orange">⚙️</div>
+      <div class="section-title">Tipo de Fonte Emissora</div>
+    </div>
+    <div class="section-body">
+      <div class="source-grid">
+        <div class="source-btn" onclick="selectSource('veiculo')" id="src-veiculo">
+          <div class="source-emoji">🚛</div>
+          <div class="source-label">Veículo</div>
+        </div>
+        <div class="source-btn" onclick="selectSource('gerador')" id="src-gerador">
+          <div class="source-emoji">⚡</div>
+          <div class="source-label">Gerador de Energia</div>
+        </div>
+        <div class="source-btn" onclick="selectSource('motobomba')" id="src-motobomba">
+          <div class="source-emoji">💧</div>
+          <div class="source-label">Motobomba</div>
+        </div>
+        <div class="source-btn" onclick="selectSource('caldeira')" id="src-caldeira">
+          <div class="source-emoji">🏭</div>
+          <div class="source-label">Caldeira</div>
+        </div>
+      </div>
+      <!-- Extras -->
+      <div id="extra-veiculo" class="extra-fields">
+        <hr class="divider">
+        <div class="field-group">
+          <label class="field-label">Placa do Veículo</label>
+          <input type="text" class="field-input" id="placa" placeholder="AAA-0000 ou AAA0A00" style="text-transform:uppercase">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Tipo de Veículo</label>
+          <select class="field-input" id="tipo-veiculo">
+            <option value="">Selecione...</option>
+            <option>Caminhão Leve</option><option>Caminhão Pesado</option><option>Ônibus</option>
+            <option>Van / Utilitário</option><option>Máquina Pesada</option><option>Trator</option><option>Outro</option>
+          </select>
+        </div>
+      </div>
+      <div id="extra-gerador" class="extra-fields">
+        <hr class="divider">
+        <div class="field-group">
+          <label class="field-label">Potência (kVA)</label>
+          <input type="number" class="field-input" id="pot-gerador" placeholder="Ex: 100">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Combustível</label>
+          <select class="field-input" id="comb-gerador">
+            <option value="">Selecione...</option><option>Diesel</option><option>Gasolina</option><option>GNV</option><option>Biodiesel</option>
+          </select>
+        </div>
+      </div>
+      <div id="extra-motobomba" class="extra-fields">
+        <hr class="divider">
+        <div class="field-group">
+          <label class="field-label">Identificação / Tag</label>
+          <input type="text" class="field-input" id="tag-motobomba" placeholder="Ex: MB-01">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Potência (CV/HP)</label>
+          <input type="number" class="field-input" id="pot-motobomba" placeholder="Ex: 25">
+        </div>
+      </div>
+      <div id="extra-caldeira" class="extra-fields">
+        <hr class="divider">
+        <div class="field-group">
+          <label class="field-label">Tag / Identificação</label>
+          <input type="text" class="field-input" id="tag-caldeira" placeholder="Ex: CAL-001">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Combustível Principal</label>
+          <select class="field-input" id="comb-caldeira">
+            <option value="">Selecione...</option><option>Bagaço de Cana</option><option>Lenha / Cavaco</option>
+            <option>Óleo Combustível</option><option>Gás Natural</option><option>Carvão</option><option>Outro</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="field-label">Pressão de Operação (kgf/cm²)</label>
+          <input type="number" step="0.1" class="field-input" id="pressao-caldeira" placeholder="Ex: 10.5">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RINGELMANN -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon purple">🎨</div>
+      <div class="section-title">Cartão Ringelmann</div>
+    </div>
+    <div class="section-body">
+      <div class="ring-title">Selecione a opacidade observada da fumaça</div>
+      <div class="ring-grid">
+        <div class="ring-card" onclick="selectRing(0)" id="ring-0"><div class="ring-color ring-0">INCOLOR</div><div class="ring-label">Grau 0</div></div>
+        <div class="ring-card" onclick="selectRing(1)" id="ring-1"><div class="ring-color ring-1">CINZA CLARO</div><div class="ring-label">Grau 1</div></div>
+        <div class="ring-card" onclick="selectRing(2)" id="ring-2"><div class="ring-color ring-2">CINZA MÉDIO</div><div class="ring-label">Grau 2</div></div>
+        <div class="ring-card" onclick="selectRing(3)" id="ring-3"><div class="ring-color ring-3">CINZA ESCURO</div><div class="ring-label">Grau 3</div></div>
+        <div class="ring-card" onclick="selectRing(4)" id="ring-4"><div class="ring-color ring-4">PRETO</div><div class="ring-label">Grau 4</div></div>
+      </div>
+      <div class="ring-selected-info">
+        <div class="ring-sel-color" id="ring-sel-color" style="background:#2d3748"></div>
+        <div>
+          <div class="ring-sel-label" id="ring-sel-label">Nenhum grau selecionado</div>
+          <div class="ring-sel-desc" id="ring-sel-desc">Toque em um dos graus acima</div>
+        </div>
+        <div class="ring-status" id="ring-status" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAMERA -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon blue">📷</div>
+      <div class="section-title">Foto da Fumaça</div>
+    </div>
+    <div class="section-body">
+      <div class="camera-btn" id="camera-btn" onclick="startCamera()">
+        <div class="camera-icon">📷</div>
+        <div class="camera-label">Abrir Câmera</div>
+        <div class="camera-sub">Capture a imagem da emissão para registro</div>
+      </div>
+      <video id="camera-preview" autoplay playsinline muted></video>
+      <img id="captured-img" alt="Foto capturada">
+      <div class="camera-controls" id="camera-controls">
+        <button class="cam-action cam-capture" onclick="capturePhoto()">📸 Capturar</button>
+        <button class="cam-action cam-cancel" onclick="stopCamera()">✕ Cancelar</button>
+      </div>
+      <div id="retake-controls" style="display:none;margin-top:10px">
+        <button class="cam-action cam-cancel" style="width:100%" onclick="retakePhoto()">🔄 Nova Foto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OBS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon green">📝</div>
+      <div class="section-title">Observações</div>
+    </div>
+    <div class="section-body">
+      <div class="field-group" style="margin-bottom:0">
+        <label class="field-label">Condições / Observações Adicionais</label>
+        <textarea class="field-input" id="obs" placeholder="Condições climáticas, duração da emissão, ações tomadas..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submit-btn" onclick="submitForm()">📋 Registrar Emissão</button>
+</div>
+</div>
+
+<!-- HISTORY TAB -->
+<div class="tab-content" id="tab-history">
+<div class="main">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;letter-spacing:1px;text-transform:uppercase">Registros Salvos</div>
+    <button class="refresh-btn" onclick="loadHistory()">↻ Atualizar</button>
+  </div>
+  <div id="history-list"><div class="loading-records">⏳ Carregando...</div></div>
+</div>
+</div>
+
+<div class="toast" id="toast">✅ Registro salvo!</div>
+<canvas id="snapshot-canvas" style="display:none"></canvas>
+
+<script type="module">
+// ─── FIREBASE ───────────────────────────────────────────────────────────────
+import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, getDocs, orderBy, query, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+let db = null;
+let fbApp = null;
+
+const LS_KEY = 'fb_cfg_v1';
+const LOCAL_KEY = 'emissao_local_v1';
+
+function loadCfgFromStorage() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch { return null; }
+}
+
+function initFirebase(cfg) {
+  try {
+    if (getApps().length) fbApp = getApps()[0];
+    else fbApp = initializeApp(cfg);
+    db = getFirestore(fbApp);
+    updateBadge(true);
+    document.getElementById('fb-status').className = 'firebase-status ok';
+    document.getElementById('fb-status').textContent = '✅ Firebase conectado — dados salvos na nuvem';
+    return true;
+  } catch(e) {
+    console.error(e);
+    updateBadge(false);
+    return false;
+  }
+}
+
+function updateBadge(connected) {
+  const b = document.getElementById('fb-badge');
+  b.textContent = connected ? '🟢 FIREBASE' : '⚫ LOCAL';
+  b.style.color = connected ? 'var(--success)' : 'var(--muted)';
+  b.style.borderColor = connected ? 'var(--success)' : 'var(--border)';
+}
+
+// Try auto-connect on load
+const savedCfg = loadCfgFromStorage();
+if (savedCfg) {
+  initFirebase(savedCfg);
+  fillCfgInputs(savedCfg);
+}
+
+function fillCfgInputs(cfg) {
+  ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k => {
+    const el = document.getElementById('cfg-' + k);
+    if (el && cfg[k]) el.value = cfg[k];
+  });
+}
+
+window.saveCfg = function() {
+  const cfg = {
+    apiKey:            document.getElementById('cfg-apiKey').value.trim(),
+    authDomain:        document.getElementById('cfg-authDomain').value.trim(),
+    projectId:         document.getElementById('cfg-projectId').value.trim(),
+    storageBucket:     document.getElementById('cfg-storageBucket').value.trim(),
+    messagingSenderId: document.getElementById('cfg-messagingSenderId').value.trim(),
+    appId:             document.getElementById('cfg-appId').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.projectId) { alert('Preencha ao menos API Key e Project ID'); return; }
+  localStorage.setItem(LS_KEY, JSON.stringify(cfg));
+  const ok = initFirebase(cfg);
+  if (ok) { closeCfg(); showToast('🔥 Firebase conectado!', false); }
+  else showToast('❌ Erro ao conectar — verifique as credenciais', true);
+};
+
+// ─── SAVE RECORD ────────────────────────────────────────────────────────────
+window.saveRecord = async function(data) {
+  if (db) {
+    await addDoc(collection(db, 'emissoes'), { ...data, timestamp: serverTimestamp() });
+  } else {
+    // Save locally
+    const local = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
+    local.unshift({ ...data, timestamp: new Date().toISOString() });
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(local.slice(0, 200)));
+  }
+};
+
+// ─── LOAD HISTORY ───────────────────────────────────────────────────────────
+window.loadHistory = async function() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '<div class="loading-records">⏳ Carregando...</div>';
+  let records = [];
+
+  if (db) {
+    try {
+      const q = query(collection(db, 'emissoes'), orderBy('timestamp', 'desc'));
+      const snap = await getDocs(q);
+      snap.forEach(doc => records.push({ id: doc.id, ...doc.data() }));
+    } catch(e) {
+      list.innerHTML = '<div class="loading-records" style="color:var(--danger)">❌ Erro ao carregar do Firebase</div>';
+      return;
+    }
+  } else {
+    records = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
+  }
+
+  if (!records.length) {
+    list.innerHTML = `<div class="no-records">
+      <div class="no-records-icon">📭</div>
+      <div class="no-records-text">Nenhum registro ainda</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">Lance uma emissão na aba Lançamento</div>
+    </div>`;
+    return;
+  }
+
+  const ringLabels = ['Grau 0 — Incolor','Grau 1 — Cinza Claro','Grau 2 — Cinza Médio','Grau 3 — Cinza Escuro','Grau 4 — Preto'];
+  const sourceEmoji = { veiculo:'🚛', gerador:'⚡', motobomba:'💧', caldeira:'🏭' };
+  const statusMap = { 'REGULAR':'status-ok','ATENÇÃO':'status-atenc','IRREGULAR':'status-crit','CRÍTICO':'status-crit' };
+
+  list.innerHTML = records.map(r => {
+    let ts = '';
+    if (r.timestamp?.toDate) ts = r.timestamp.toDate().toLocaleString('pt-BR');
+    else if (r.timestamp) ts = new Date(r.timestamp).toLocaleString('pt-BR');
+
+    const ring = typeof r.ringelmann === 'number' ? r.ringelmann : '-';
+    const ringLabel = typeof r.ringelmann === 'number' ? ringLabels[r.ringelmann] : 'Não informado';
+    const statusClass = r.status ? (statusMap[r.status] || '') : '';
+
+    return `<div class="record-card">
+      <div class="record-header">
+        <span style="font-size:20px">${sourceEmoji[r.fonte] || '❓'}</span>
+        <span class="record-source">${r.fonte || '—'}</span>
+        ${r.status ? `<span class="record-badge ${statusClass}" style="font-size:9px">${r.status}</span>` : ''}
+        <span class="record-date">${ts}</span>
+      </div>
+      <div class="record-row">
+        <span class="record-badge badge-op">👷 ${r.operador || '—'}</span>
+        <span class="record-badge badge-ring">🎨 ${ringLabel}</span>
+        ${r.lat ? `<span class="record-badge badge-loc">📍 ${parseFloat(r.lat).toFixed(4)}, ${parseFloat(r.lon).toFixed(4)}</span>` : ''}
+      </div>
+      ${r.obs ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">📝 ${r.obs}</div>` : ''}
+    </div>`;
+  }).join('');
+};
+
+// ─── CLOCK ──────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('auto-date').textContent = now.toLocaleDateString('pt-BR');
+  document.getElementById('auto-time').textContent = now.toLocaleTimeString('pt-BR');
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ─── GPS ────────────────────────────────────────────────────────────────────
+let coords = null;
+navigator.geolocation?.getCurrentPosition(pos => {
+  coords = pos.coords;
+  const lat = coords.latitude.toFixed(6), lon = coords.longitude.toFixed(6);
+  ['auto-lat','auto-lon','auto-loc'].forEach(id => document.getElementById(id).classList.remove('loading'));
+  document.getElementById('auto-lat').textContent = lat;
+  document.getElementById('auto-lon').textContent = lon;
+  document.getElementById('auto-loc').textContent = `${lat}, ${lon}`;
+}, () => {
+  document.getElementById('auto-loc').textContent = 'Permissão negada';
+  document.getElementById('auto-lat').textContent = 'N/A';
+  document.getElementById('auto-lon').textContent = 'N/A';
+}, { enableHighAccuracy: true });
+
+// ─── SOURCE ─────────────────────────────────────────────────────────────────
+let selectedSource = null;
+window.selectSource = function(src) {
+  ['veiculo','gerador','motobomba','caldeira'].forEach(s => {
+    document.getElementById('src-'+s).classList.remove('selected');
+    document.getElementById('extra-'+s).classList.remove('visible');
+  });
+  selectedSource = src;
+  document.getElementById('src-'+src).classList.add('selected');
+  document.getElementById('extra-'+src).classList.add('visible');
+};
+
+// ─── RINGELMANN ─────────────────────────────────────────────────────────────
+let selectedRing = null;
+const ringData = [
+  { bg:'#f8f8f8', label:'Grau 0 — Incolor',    desc:'Emissão praticamente nula.',              status:'REGULAR',    sc:'status-ok'    },
+  { bg:'#d4d4d4', label:'Grau 1 — Cinza Claro', desc:'20% de opacidade. Emissão leve.',         status:'REGULAR',    sc:'status-ok'    },
+  { bg:'#9a9a9a', label:'Grau 2 — Cinza Médio', desc:'40% de opacidade. Atenção recomendada.',  status:'ATENÇÃO',    sc:'status-atenc' },
+  { bg:'#4a4a4a', label:'Grau 3 — Cinza Escuro',desc:'60% de opacidade. Acionar manutenção.',   status:'IRREGULAR',  sc:'status-crit'  },
+  { bg:'#1a1a1a', label:'Grau 4 — Preto',       desc:'80-100% opacidade. Parar operação.',      status:'CRÍTICO',    sc:'status-crit'  },
+];
+window.selectRing = function(n) {
+  document.querySelectorAll('.ring-card').forEach(el => el.classList.remove('selected'));
+  document.getElementById('ring-'+n).classList.add('selected');
+  selectedRing = n;
+  const d = ringData[n];
+  document.getElementById('ring-sel-color').style.background = d.bg;
+  document.getElementById('ring-sel-label').textContent = d.label;
+  document.getElementById('ring-sel-desc').textContent = d.desc;
+  const s = document.getElementById('ring-status');
+  s.style.display = 'flex'; s.className = 'ring-status '+d.sc; s.textContent = d.status;
+};
+
+// ─── CAMERA ─────────────────────────────────────────────────────────────────
+let stream = null, capturedDataUrl = null;
+window.startCamera = async function() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+    document.getElementById('camera-preview').srcObject = stream;
+    document.getElementById('camera-preview').style.display = 'block';
+    document.getElementById('camera-btn').style.display = 'none';
+    document.getElementById('camera-controls').style.display = 'flex';
+  } catch { alert('Não foi possível acessar a câmera.'); }
+};
+window.capturePhoto = function() {
+  const v = document.getElementById('camera-preview'), c = document.getElementById('snapshot-canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  capturedDataUrl = c.toDataURL('image/jpeg', 0.85);
+  const img = document.getElementById('captured-img');
+  img.src = capturedDataUrl; img.style.display = 'block';
+  stopCamera(true);
+  document.getElementById('retake-controls').style.display = 'block';
+};
+window.stopCamera = function(keep = false) {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  document.getElementById('camera-preview').style.display = 'none';
+  document.getElementById('camera-controls').style.display = 'none';
+  if (!keep) { document.getElementById('camera-btn').style.display = 'flex'; document.getElementById('captured-img').style.display = 'none'; capturedDataUrl = null; }
+};
+window.retakePhoto = function() {
+  capturedDataUrl = null;
+  document.getElementById('captured-img').style.display = 'none';
+  document.getElementById('retake-controls').style.display = 'none';
+  document.getElementById('camera-btn').style.display = 'flex';
+};
+
+// ─── SUBMIT ─────────────────────────────────────────────────────────────────
+window.submitForm = async function() {
+  const opName = document.getElementById('op-name').value.trim();
+  if (!opName)          { alert('⚠️ Preencha o nome do operador.'); return; }
+  if (!selectedSource)  { alert('⚠️ Selecione o tipo de fonte emissora.'); return; }
+  if (selectedRing === null) { alert('⚠️ Selecione o grau Ringelmann.'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '⏳ Salvando...';
+
+  const extraData = {};
+  if (selectedSource === 'veiculo') {
+    extraData.placa = document.getElementById('placa').value.toUpperCase();
+    extraData.tipoVeiculo = document.getElementById('tipo-veiculo').value;
+  } else if (selectedSource === 'gerador') {
+    extraData.potenciaKva = document.getElementById('pot-gerador').value;
+    extraData.combustivel = document.getElementById('comb-gerador').value;
+  } else if (selectedSource === 'motobomba') {
+    extraData.tag = document.getElementById('tag-motobomba').value;
+    extraData.potenciaCV = document.getElementById('pot-motobomba').value;
+  } else if (selectedSource === 'caldeira') {
+    extraData.tag = document.getElementById('tag-caldeira').value;
+    extraData.combustivel = document.getElementById('comb-caldeira').value;
+    extraData.pressao = document.getElementById('pressao-caldeira').value;
+  }
+
+  const record = {
+    operador: opName,
+    matricula: document.getElementById('op-id').value,
+    fonte: selectedSource,
+    ringelmann: selectedRing,
+    status: ringData[selectedRing].status,
+    lat: coords?.latitude?.toString() || '',
+    lon: coords?.longitude?.toString() || '',
+    obs: document.getElementById('obs').value,
+    fotoBase64: capturedDataUrl || '',
+    dataHora: new Date().toLocaleString('pt-BR'),
+    ...extraData
+  };
+
+  try {
+    await saveRecord(record);
+    showToast(db ? '☁️ Salvo no Firebase!' : '💾 Salvo localmente!', false);
+    resetForm();
+  } catch(e) {
+    showToast('❌ Erro ao salvar: ' + e.message, true);
+  }
+
+  btn.disabled = false; btn.innerHTML = '📋 Registrar Emissão';
+};
+
+function resetForm() {
+  document.getElementById('op-name').value = '';
+  document.getElementById('op-id').value = '';
+  document.getElementById('obs').value = '';
+  ['veiculo','gerador','motobomba','caldeira'].forEach(s => {
+    document.getElementById('src-'+s).classList.remove('selected');
+    document.getElementById('extra-'+s).classList.remove('visible');
+  });
+  selectedSource = null;
+  document.querySelectorAll('.ring-card').forEach(el => el.classList.remove('selected'));
+  selectedRing = null;
+  document.getElementById('ring-sel-color').style.background = '#2d3748';
+  document.getElementById('ring-sel-label').textContent = 'Nenhum grau selecionado';
+  document.getElementById('ring-sel-desc').textContent = 'Toque em um dos graus acima';
+  document.getElementById('ring-status').style.display = 'none';
+  stopCamera(false);
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='form')||(i===1&&tab==='history')));
+  document.getElementById('tab-form').classList.toggle('active', tab==='form');
+  document.getElementById('tab-history').classList.toggle('active', tab==='history');
+  if (tab === 'history') loadHistory();
+};
+
+// ─── MODAL ──────────────────────────────────────────────────────────────────
+window.openCfg  = () => document.getElementById('cfg-modal').classList.add('open');
+window.closeCfg = () => document.getElementById('cfg-modal').classList.remove('open');
+
+// ─── TOAST ──────────────────────────────────────────────────────────────────
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+window.showToast = showToast;
+</script>
+</body>
+</html>
